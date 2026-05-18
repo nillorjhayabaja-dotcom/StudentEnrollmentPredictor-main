@@ -8,6 +8,10 @@
     "build": "vite build",
     "build:dev": "vite build --mode development",
     "preview": "vite preview",
+    "seed:students": "node scripts/seed-students.mjs",
+    "seed:active-2025-s2": "set TARGET_ACTIVE_PERCENT=95&& set TARGET_ENROLLMENT_YEAR=2025&& set TARGET_ENROLLMENT_SEMESTER=2&& node scripts/seed-students.mjs",
+    "seed:active-latest": "set TARGET_ACTIVE_PERCENT=95&& node scripts/seed-students.mjs",
+    "seed:enrollments": "node scripts/seed-enrollments.mjs",
     "lint": "eslint .",
     "format": "prettier --write ."
   },

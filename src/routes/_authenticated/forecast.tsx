@@ -153,6 +153,8 @@ function ForecastPage() {
                   background: "var(--color-popover)", color: "var(--color-popover-foreground)",
                   fontSize: 12, boxShadow: "var(--shadow-card)",
                 }}
+                labelStyle={{ color: "var(--color-popover-foreground)" }}
+                itemStyle={{ color: "var(--color-popover-foreground)" }}
               />
               <Area type="monotone" dataKey="upper" stroke="none" fill="url(#bandFill)" className="text-foreground" isAnimationActive />
               <Area type="monotone" dataKey="lower" stroke="none" fill="var(--color-card)" isAnimationActive />

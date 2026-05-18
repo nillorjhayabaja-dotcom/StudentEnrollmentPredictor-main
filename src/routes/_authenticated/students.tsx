@@ -21,7 +21,6 @@ import type { Tables } from "@/integrations/supabase/types";
 import { motion, AnimatePresence } from "framer-motion";
 
 type Student = Tables<"students">;
-const PROGRAMS = ["BS Computer Science", "BS Information Technology", "BS Business Administration", "BS Education"];
 const STATUSES = ["Active", "Inactive", "Graduated", "Dropped"];
 const PAGE_SIZE = 10;
 
@@ -31,7 +30,7 @@ export const Route = createFileRoute("/_authenticated/students")({
 });
 
 function emptyForm(): Partial<Student> {
-  return { student_no: "", full_name: "", gender: "Male", program: PROGRAMS[0], year_level: 1, status: "Active", email: "" };
+  return { student_no: "", full_name: "", gender: "Male", program: undefined, year_level: 1, status: "Active", email: "" };
 }
 
 function statusVariant(s: string) {
@@ -58,11 +57,22 @@ function StudentsPage() {
   const { data, isLoading } = useQuery({
     queryKey: ["students"],
     queryFn: async () => {
-      const { data, error } = await supabase.from("students").select("*").order("created_at", { ascending: false });
+      const { data, error } = await supabase
+        .from("students")
+        .select("*")
+        .order("created_at", { ascending: false });
       if (error) throw error;
       return data;
     },
   });
+
+  const programOptions = useMemo(() => {
+    const programs = new Set<string>();
+    (data ?? []).forEach((s) => {
+      if (s.program) programs.add(s.program);
+    });
+    return Array.from(programs).sort();
+  }, [data]);
 
   const filtered = useMemo(() => {
     if (!data) return [];
@@ -142,7 +152,13 @@ function StudentsPage() {
               <SelectTrigger className="h-10 w-full sm:w-56"><SelectValue placeholder="All programs" /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">All programs</SelectItem>
-                {PROGRAMS.map((p) => <SelectItem key={p} value={p}>{p}</SelectItem>)}
+                {programOptions.length === 0 ? (
+                  <SelectItem value="" disabled>
+                    No programs available
+                  </SelectItem>
+                ) : (
+                  programOptions.map((p) => <SelectItem key={p} value={p}>{p}</SelectItem>)
+                )}
               </SelectContent>
             </Select>
             <Select value={statusFilter} onValueChange={(v) => { setStatusFilter(v); setPage(1); }}>
@@ -184,9 +200,20 @@ function StudentsPage() {
                     </Select>
                   </Field>
                   <Field label="Program">
-                    <Select value={form.program ?? PROGRAMS[0]} onValueChange={(v) => setForm({ ...form, program: v })}>
+                    <Select
+                      value={form.program ?? programOptions[0] ?? ""}
+                      onValueChange={(v) => setForm({ ...form, program: v })}
+                    >
                       <SelectTrigger><SelectValue /></SelectTrigger>
-                      <SelectContent>{PROGRAMS.map((p) => <SelectItem key={p} value={p}>{p}</SelectItem>)}</SelectContent>
+                      <SelectContent>
+                        {programOptions.length === 0 ? (
+                          <SelectItem value="" disabled>
+                            No programs available
+                          </SelectItem>
+                        ) : (
+                          programOptions.map((p) => <SelectItem key={p} value={p}>{p}</SelectItem>)
+                        )}
+                      </SelectContent>
                     </Select>
                   </Field>
                   <Field label="Year Level">

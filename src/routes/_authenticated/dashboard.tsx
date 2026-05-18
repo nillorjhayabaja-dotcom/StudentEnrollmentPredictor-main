@@ -55,12 +55,13 @@ function Dashboard() {
     queryKey: ["dashboard"],
     queryFn: async () => {
       const [students, enrollments, activity] = await Promise.all([
-        supabase.from("students").select("*"),
+        supabase.from("students").select("*", { count: "exact" }).range(0, 99999),
         supabase.from("enrollments").select("*").order("year").order("semester"),
         supabase.from("activity_log").select("*").order("created_at", { ascending: false }).limit(8),
       ]);
       return {
         students: students.data ?? [],
+        studentsCount: students.count ?? null,
         enrollments: enrollments.data ?? [],
         activity: activity.data ?? [],
       };
@@ -82,25 +83,46 @@ function Dashboard() {
     );
   }
 
-  const total = data.students.length;
-  const active = data.students.filter((s) => s.status === "Active").length;
+  const totalRecords = data.studentsCount ?? data.students.length;
+  const allActiveStudents = data.students.filter((s) => s.status === "Active");
+  const active = allActiveStudents.length;
+  const activePercent = totalRecords ? Math.round((active / totalRecords) * 1000) / 10 : 0;
   const totalEnroll = data.enrollments.reduce((a, b) => a + b.count, 0);
 
+  const yearSemesterMap: Record<number, { 1: number; 2: number }> = {};
+  data.enrollments.forEach((e) => {
+    if (!yearSemesterMap[e.year]) yearSemesterMap[e.year] = { 1: 0, 2: 0 };
+    const semesterKey = e.semester as 1 | 2;
+    yearSemesterMap[e.year][semesterKey] = (yearSemesterMap[e.year][semesterKey] ?? 0) + e.count;
+  });
+
   const genderMap: Record<string, number> = {};
-  data.students.forEach((s) => { genderMap[s.gender] = (genderMap[s.gender] ?? 0) + 1; });
-  const genderData = Object.entries(genderMap).map(([name, value]) => ({ name, value }));
+  allActiveStudents
+    .filter((s) => s.gender === "Male" || s.gender === "Female")
+    .forEach((s) => { genderMap[s.gender] = (genderMap[s.gender] ?? 0) + 1; });
+  const genderData = ["Male", "Female"].map((name) => ({
+    name,
+    value: genderMap[name] ?? 0,
+  })).filter((item) => item.value > 0);
 
   const programMap: Record<string, number> = {};
   data.enrollments.forEach((e) => { programMap[e.program] = (programMap[e.program] ?? 0) + e.count; });
-  const programData = Object.entries(programMap).map(([name, value]) => ({ name: name.replace("BS ", ""), value }));
+  const programData = Object.entries(programMap)
+    .map(([name, value]) => ({ name: name.replace("BS ", ""), value }))
+    .sort((a, b) => b.value - a.value);
+  const topPrograms = programData.slice(0, 5);
 
   const yearMap: Record<string, number> = {};
   data.enrollments.forEach((e) => { const k = `${e.year}`; yearMap[k] = (yearMap[k] ?? 0) + e.count; });
   const trendData = Object.entries(yearMap).sort().map(([year, count]) => ({ year, count }));
 
   const last = trendData[trendData.length - 1]?.count ?? 0;
+  const latestYear = trendData[trendData.length - 1]?.year ?? "";
   const prev = trendData[trendData.length - 2]?.count ?? 1;
   const growth = ((last - prev) / prev) * 100;
+
+  const focusYear = yearSemesterMap[2025] ? 2025 : Number(latestYear) || 2025;
+  const semesterTotals = yearSemesterMap[focusYear] ?? { 1: 0, 2: 0 };
 
   const greeting = (() => {
     const h = new Date().getHours();
@@ -132,24 +154,77 @@ function Dashboard() {
               {greeting}, {name}.
             </h2>
             <p className="mt-1.5 max-w-md text-sm text-muted-foreground">
-              Here's what's happening across your campus today. Forecasts updated moments ago.
+              Track your current student roster, active enrollment health, and historical program demand in one place.
             </p>
           </div>
-          <div className="grid grid-cols-3 gap-2 text-center md:text-right">
-            <Stat tiny label="Active" value={active} />
-            <Stat tiny label="Programs" value={Object.keys(programMap).length} />
-            <Stat tiny label="Growth" value={`${growth >= 0 ? "+" : ""}${growth.toFixed(1)}%`} />
+          <div className="grid grid-cols-1 gap-3 text-center md:grid-cols-2 md:text-right">
+            <Stat tiny label="Active students" value={active} />
+            <Stat tiny label="Active rate" value={`${activePercent}%`} />
           </div>
         </div>
       </motion.section>
 
+      <div className="grid gap-4 md:grid-cols-2">
+        <motion.div
+          initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5, delay: 0.1 }}
+          className="card-elevated p-5"
+        >
+          <h3 className="text-sm font-semibold">Dashboard at a glance</h3>
+          <p className="mt-2 text-sm text-muted-foreground">
+            This view shows the live enrolled student roster, the share of currently active students, and how enrollment volume has changed year-over-year.
+          </p>
+          <ul className="mt-4 space-y-2 text-xs text-muted-foreground">
+            <li className="flex gap-2"><span className="mt-0.5 h-2 w-2 rounded-full bg-foreground" />Current students reflects your active roster.</li>
+            <li className="flex gap-2"><span className="mt-0.5 h-2 w-2 rounded-full bg-foreground" />Enrollment trend shows annual program demand.</li>
+            <li className="flex gap-2"><span className="mt-0.5 h-2 w-2 rounded-full bg-foreground" />Gender distribution is limited to active Male/Female students.</li>
+          </ul>
+        </motion.div>
+        <motion.div
+          initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5, delay: 0.12 }}
+          className="card-elevated p-5"
+        >
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm font-semibold">Current roster</p>
+              <p className="text-xs text-muted-foreground">Live active students only</p>
+            </div>
+            <span className="rounded-full border border-border bg-muted/40 px-2 py-0.5 text-[10px] font-medium text-muted-foreground">
+              {activePercent}% active
+            </span>
+          </div>
+          <div className="mt-6 grid gap-3 sm:grid-cols-2">
+            <Stat tiny label="Active students" value={active} />
+            <Stat tiny label="Active rate" value={`${activePercent}%`} />
+          </div>
+        </motion.div>
+      </div>
+
       {/* KPIs */}
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-        <KPI index={0} icon={Users} label="Total students" value={total} hint={`${active} currently active`} delta={2.4} />
+        <KPI index={0} icon={Users} label="Active students" value={active} hint="Live active student roster" />
         <KPI index={1} icon={GraduationCap} label="Programs" value={Object.keys(programMap).length} hint="Active programs" />
-        <KPI index={2} icon={Activity} label="All-time enrollments" value={totalEnroll} hint="Historical aggregate" delta={1.8} />
-        <KPI index={3} icon={TrendingUp} label="YoY growth" value={Math.round(Math.abs(growth) * 10) / 10} hint="Last vs prior year" delta={growth} />
+        <KPI index={2} icon={Activity} label={`${focusYear} S2 enrollments`} value={semesterTotals[2]} hint="Second-semester total" />
+        <KPI index={3} icon={TrendingUp} label={`Enrollments ${latestYear}`} value={last} hint="Latest year total" delta={growth} />
       </div>
+
+      <motion.div
+        initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5, delay: 0.12 }}
+        className="card-elevated p-5"
+      >
+        <div className="flex items-center justify-between">
+          <div>
+            <p className="text-sm font-semibold">{focusYear} semester split</p>
+            <p className="text-xs text-muted-foreground">1st semester vs 2nd semester enrollment totals</p>
+          </div>
+          <span className="rounded-full border border-border bg-muted/40 px-2 py-0.5 text-[10px] font-medium text-muted-foreground">
+            Semester totals
+          </span>
+        </div>
+        <div className="mt-6 grid gap-3 sm:grid-cols-2">
+          <Stat tiny label="1st semester" value={semesterTotals[1]} />
+          <Stat tiny label="2nd semester" value={semesterTotals[2]} />
+        </div>
+      </motion.div>
 
       {/* Trend + Gender */}
       <div className="grid gap-4 lg:grid-cols-3">
@@ -160,7 +235,7 @@ function Dashboard() {
           <div className="mb-4 flex items-baseline justify-between">
             <div>
               <h3 className="text-sm font-semibold">Enrollment trend</h3>
-              <p className="text-xs text-muted-foreground">Annual aggregate · all programs</p>
+              <p className="text-xs text-muted-foreground">Annual total enrollments · all programs</p>
             </div>
             <span className="rounded-full border border-border bg-muted/40 px-2 py-0.5 text-[10px] font-medium text-muted-foreground">
               {trendData.length} years
@@ -184,6 +259,8 @@ function Dashboard() {
                     background: "var(--color-popover)", color: "var(--color-popover-foreground)",
                     fontSize: 12, boxShadow: "var(--shadow-card)",
                   }}
+                  labelStyle={{ color: "var(--color-popover-foreground)" }}
+                  itemStyle={{ color: "var(--color-popover-foreground)" }}
                 />
                 <Area type="monotone" dataKey="count" stroke="currentColor" strokeWidth={2} fill="url(#trendFill)" className="text-foreground" />
               </AreaChart>
@@ -196,7 +273,7 @@ function Dashboard() {
           className="card-elevated p-5"
         >
           <h3 className="text-sm font-semibold">Gender distribution</h3>
-          <p className="text-xs text-muted-foreground">Across all active students</p>
+          <p className="text-xs text-muted-foreground">Across active Male/Female students only</p>
           <div className="h-56">
             <ResponsiveContainer width="100%" height="100%">
               <PieChart>
@@ -211,6 +288,8 @@ function Dashboard() {
                     background: "var(--color-popover)", color: "var(--color-popover-foreground)",
                     fontSize: 12,
                   }}
+                  labelStyle={{ color: "var(--color-popover-foreground)" }}
+                  itemStyle={{ color: "var(--color-popover-foreground)" }}
                 />
               </PieChart>
             </ResponsiveContainer>
@@ -227,6 +306,7 @@ function Dashboard() {
                 <span className="font-medium tabular-nums">{g.value}</span>
               </div>
             ))}
+            
           </div>
         </motion.div>
       </div>
@@ -252,10 +332,24 @@ function Dashboard() {
                     background: "var(--color-popover)", color: "var(--color-popover-foreground)",
                     fontSize: 12,
                   }}
+                  labelStyle={{ color: "var(--color-popover-foreground)" }}
+                  itemStyle={{ color: "var(--color-popover-foreground)" }}
                 />
                 <Bar dataKey="value" fill="currentColor" className="text-foreground" radius={[8, 8, 0, 0]} />
               </BarChart>
             </ResponsiveContainer>
+          </div>
+          <div className="mt-4 rounded-xl border border-border bg-card p-4">
+            <h4 className="text-sm font-semibold">Top programs</h4>
+            <p className="text-xs text-muted-foreground">Based on historical enrollment totals</p>
+            <div className="mt-3 space-y-2 text-sm">
+              {topPrograms.map((program) => (
+                <div key={program.name} className="flex items-center justify-between rounded-md border border-border bg-background/50 px-3 py-2">
+                  <span>{program.name}</span>
+                  <span className="font-semibold tabular-nums">{program.value.toLocaleString()}</span>
+                </div>
+              ))}
+            </div>
           </div>
         </motion.div>
 
@@ -267,36 +361,38 @@ function Dashboard() {
             <h3 className="text-sm font-semibold">Recent activity</h3>
             <span className="text-[10px] uppercase tracking-wider text-muted-foreground">Live</span>
           </div>
-          {data.activity.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-12 text-center">
-              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-muted">
-                <Activity className="h-4 w-4 text-muted-foreground" />
+          <div className="mt-4 h-[28rem] overflow-y-auto pr-2">
+            {data.activity.length === 0 ? (
+              <div className="flex h-full flex-col items-center justify-center text-center">
+                <div className="flex h-10 w-10 items-center justify-center rounded-full bg-muted">
+                  <Activity className="h-4 w-4 text-muted-foreground" />
+                </div>
+                <p className="mt-3 text-sm font-medium">No activity yet</p>
+                <p className="mt-1 text-xs text-muted-foreground">Actions will appear here as they happen.</p>
               </div>
-              <p className="mt-3 text-sm font-medium">No activity yet</p>
-              <p className="mt-1 text-xs text-muted-foreground">Actions will appear here as they happen.</p>
-            </div>
-          ) : (
-            <ol className="relative mt-4 space-y-4 border-l border-border pl-4">
-              {data.activity.map((a, i) => (
-                <motion.li
-                  key={a.id}
-                  initial={{ opacity: 0, x: -8 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  transition={{ duration: 0.35, delay: i * 0.04 }}
-                  className="relative"
-                >
-                  <span className="absolute -left-[21px] top-1.5 flex h-2.5 w-2.5 items-center justify-center rounded-full border border-border bg-card">
-                    <span className="h-1 w-1 rounded-full bg-foreground" />
-                  </span>
-                  <p className="text-sm font-medium leading-tight">{a.action}</p>
-                  {a.detail && <p className="mt-0.5 truncate text-xs text-muted-foreground">{a.detail}</p>}
-                  <p className="mt-0.5 text-[10px] uppercase tracking-wider text-muted-foreground">
-                    {new Date(a.created_at).toLocaleString()}
-                  </p>
-                </motion.li>
-              ))}
-            </ol>
-          )}
+            ) : (
+              <ol className="relative space-y-4 border-l border-border pl-4">
+                {data.activity.map((a, i) => (
+                  <motion.li
+                    key={a.id}
+                    initial={{ opacity: 0, x: -8 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ duration: 0.35, delay: i * 0.04 }}
+                    className="relative"
+                  >
+                    <span className="absolute -left-[21px] top-1.5 flex h-2.5 w-2.5 items-center justify-center rounded-full border border-border bg-card">
+                      <span className="h-1 w-1 rounded-full bg-foreground" />
+                    </span>
+                    <p className="text-sm font-medium leading-tight">{a.action}</p>
+                    {a.detail && <p className="mt-0.5 truncate text-xs text-muted-foreground">{a.detail}</p>}
+                    <p className="mt-0.5 text-[10px] uppercase tracking-wider text-muted-foreground">
+                      {new Date(a.created_at).toLocaleString()}
+                    </p>
+                  </motion.li>
+                ))}
+              </ol>
+            )}
+          </div>
         </motion.div>
       </div>
     </div>

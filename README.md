@@ -22,3 +22,25 @@ The app requires the following environment variables:
 
 Copy `.env.example` to `.env` and replace the placeholders with values from your Supabase project.
 
+## Seeding dummy students
+
+After your database schema is created, you can seed 2,000 dummy students with:
+
+```bash
+SUPABASE_URL=your_supabase_url \
+SUPABASE_SERVICE_ROLE_KEY=your_service_role_key \
+npm run seed:students
+```
+
+This script will insert 2,000 rows into the `students` table in your configured Supabase project.
+
+### Forecast data
+
+You can also seed enrollment history used in forecasting with:
+
+```bash
+npm run seed:enrollments
+```
+
+This will insert one record per semester/program combination and populate the `enrollments` table used by the forecast page.
+

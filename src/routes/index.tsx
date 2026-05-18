@@ -19,6 +19,8 @@ const fade = (delay = 0) => ({
   transition: { duration: 0.6, delay, ease: [0.22, 1, 0.36, 1] as const },
 });
 
+const currentYear = new Date().getFullYear();
+
 function Landing() {
   return (
     <div className="min-h-screen bg-background">
@@ -74,34 +76,6 @@ function Landing() {
             </Link>
           </motion.div>
 
-          {/* mock dashboard preview */}
-          <motion.div
-            initial={{ opacity: 0, y: 32 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.9, delay: 0.35, ease: [0.22, 1, 0.36, 1] as const }}
-            className="relative mx-auto mt-16 max-w-5xl"
-          >
-            <div className="card-elevated overflow-hidden p-2 shadow-glow">
-              <div className="rounded-lg border border-border bg-muted/40 p-6">
-                <div className="grid gap-3 md:grid-cols-4">
-                  {[
-                    { l: "Total students", v: "1,284" },
-                    { l: "Programs", v: "4" },
-                    { l: "Next forecast", v: "+4.2%" },
-                    { l: "Confidence", v: "95%" },
-                  ].map((s) => (
-                    <div key={s.l} className="rounded-md border border-border bg-card p-3 text-left">
-                      <p className="text-[10px] uppercase tracking-wider text-muted-foreground">{s.l}</p>
-                      <p className="mt-1 text-xl font-semibold">{s.v}</p>
-                    </div>
-                  ))}
-                </div>
-                <div className="mt-3 h-44 rounded-md border border-border bg-card p-4">
-                  <MockChart />
-                </div>
-              </div>
-            </div>
-          </motion.div>
         </div>
       </section>
 
@@ -150,7 +124,9 @@ function Landing() {
       </section>
 
       <footer className="border-t border-border py-8 text-center text-xs text-muted-foreground">
-        Built as a portfolio project · React · TanStack Start · Lovable Cloud
+       <p className="text-sm text-gray-500">
+            © {currentYear} Rollin Jhay Abaja. All rights reserved.
+          </p>
       </footer>
     </div>
   );

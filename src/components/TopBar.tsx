@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Link } from "@tanstack/react-router";
+import { Link, useNavigate } from "@tanstack/react-router";
 import { Bell, Search, Sun, Moon, ChevronDown, LogOut, Settings as SettingsIcon, User } from "lucide-react";
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import { Input } from "@/components/ui/input";
@@ -15,6 +15,7 @@ import { motion, AnimatePresence } from "framer-motion";
 export function TopBar({ title }: { title: string }) {
   const { theme, toggle } = useTheme();
   const { user, signOut } = useAuth();
+  const nav = useNavigate();
   const [unread] = useState(3);
   const initial = (user?.email ?? "?").slice(0, 1).toUpperCase();
 
@@ -122,7 +123,13 @@ export function TopBar({ title }: { title: string }) {
                 </Link>
               </DropdownMenuItem>
               <DropdownMenuSeparator />
-              <DropdownMenuItem onClick={() => signOut()} className="flex items-center gap-2 text-destructive focus:text-destructive">
+              <DropdownMenuItem
+                onClick={async () => {
+                  await signOut();
+                  nav({ to: "/login" });
+                }}
+                className="flex items-center gap-2 text-destructive focus:text-destructive"
+              >
                 <LogOut className="h-3.5 w-3.5" /> Sign out
               </DropdownMenuItem>
             </DropdownMenuContent>

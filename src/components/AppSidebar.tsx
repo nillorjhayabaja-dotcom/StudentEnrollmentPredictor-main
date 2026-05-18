@@ -1,4 +1,4 @@
-import { Link, useRouterState } from "@tanstack/react-router";
+import { Link, useNavigate, useRouterState } from "@tanstack/react-router";
 import { LayoutDashboard, Users, TrendingUp, FileBarChart, Settings, GraduationCap, LogOut, Sparkles } from "lucide-react";
 import {
   Sidebar, SidebarContent, SidebarGroup, SidebarGroupContent, SidebarGroupLabel,
@@ -34,6 +34,7 @@ export function AppSidebar() {
   const path = useRouterState({ select: (r) => r.location.pathname });
   const { state } = useSidebar();
   const collapsed = state === "collapsed";
+  const nav = useNavigate();
   const { signOut, user } = useAuth();
   const initial = (user?.email ?? "?").slice(0, 1).toUpperCase();
 
@@ -129,7 +130,13 @@ export function AppSidebar() {
             </SidebarMenuButton>
           </SidebarMenuItem>
           <SidebarMenuItem>
-            <SidebarMenuButton onClick={() => signOut()} className="text-muted-foreground hover:text-foreground">
+            <SidebarMenuButton
+              onClick={async () => {
+                await signOut();
+                nav({ to: "/login" });
+              }}
+              className="text-muted-foreground hover:text-foreground"
+            >
               <LogOut className="h-4 w-4" />
               {!collapsed && <span>Sign out</span>}
             </SidebarMenuButton>
