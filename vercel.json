@@ -1,8 +1,8 @@
 {
   "buildCommand": "npm run build",
-  "outputDirectory": "dist/client",
-  "cleanUrls": false
+  "outputDirectory": "dist/server"
 }
+
 
 
 
