@@ -1,27 +1,31 @@
-// Import from the built server entry point
-// Use dynamic import with proper error handling for production deployment
-let serverEntry: any;
+import path from 'path';
+import { fileURLToPath } from 'url';
 
-async function getServerEntry() {
-  if (!serverEntry) {
-    try {
-      // Try importing from dist (built output)
-      serverEntry = await import('../dist/server/index.js');
-    } catch (error) {
-      console.error('Failed to import from dist:', error);
-      throw new Error(`Cannot load server entry: ${error instanceof Error ? error.message : 'Unknown error'}`);
-    }
-  }
-  return serverEntry;
-}
+// Get the directory of this file for relative imports
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 // Vercel Serverless Functions (Node runtime). Use very lightweight typings
 // to avoid requiring @vercel/node types.
 export default async function handler(req: any, res: any) {
   try {
-    // Get the server entry
-    const entry = await getServerEntry();
-    
+    // Lazy load the server entry on first request
+    let serverEntry: any;
+    try {
+      // Try to load from the dist directory relative to the current file
+      const serverPath = path.join(__dirname, '..', 'dist', 'server', 'index.js');
+      serverEntry = await import(serverPath);
+    } catch (importError) {
+      console.error('Failed to import server from dist:', importError);
+      // Fallback: try from src
+      try {
+        serverEntry = await import('../src/server.ts');
+      } catch (fallbackError) {
+        console.error('Failed to import from src:', fallbackError);
+        throw new Error(`Cannot load server entry. Primary error: ${importError}`);
+      }
+    }
+
     const url = new URL(req.url ?? '/', `http://${req.headers?.host ?? 'localhost'}`);
 
     // TanStack Start expects a WHATWG Request.
@@ -40,7 +44,7 @@ export default async function handler(req: any, res: any) {
       body: body !== undefined ? (typeof body === 'string' ? body : JSON.stringify(body)) : undefined,
     });
 
-    const response: Response = await (entry as any).fetch(request, undefined, undefined);
+    const response: Response = await (serverEntry as any).fetch(request, undefined, undefined);
 
     res.statusCode = response.status;
     response.headers.forEach((value: string, key: string) => {
@@ -57,7 +61,7 @@ export default async function handler(req: any, res: any) {
     console.error('Handler error:', error);
     res.status(500).json({
       error: 'Internal Server Error',
-      details: error instanceof Error ? error.message : 'Unknown error'
+      details: error instanceof Error ? error.message : String(error)
     });
   }
 }
