@@ -1,28 +1,31 @@
 import fs from 'fs';
 import path from 'path';
 
-// Create Vercel output structure
+// Create Vercel output structure for "Custom Output" deployments.
+// Vercel expects:
+// - index.html to exist at /.vercel/output/index.html
+// - API function at /.vercel/output/functions/api/server.js (when routing dest is /api/server.js)
 const outputDir = '.vercel/output';
 const functionsDir = path.join(outputDir, 'functions');
-const staticDir = path.join(outputDir, 'static');
+const apiDir = path.join(functionsDir, 'api');
 
 // Create directories
-fs.mkdirSync(functionsDir, { recursive: true });
-fs.mkdirSync(staticDir, { recursive: true });
-
-// Copy client files to static
-if (fs.existsSync('dist/client')) {
-  fs.cpSync('dist/client', staticDir, { recursive: true });
-}
-
-// Create API route handler
-const apiDir = path.join(functionsDir, 'api');
 fs.mkdirSync(apiDir, { recursive: true });
 
-// Copy the server entry point
-if (fs.existsSync('dist/server')) {
-  fs.cpSync('dist/server', path.join(apiDir, 'server'), { recursive: true });
+// Copy client files to output root so /index.html exists
+if (fs.existsSync('dist/client')) {
+  fs.cpSync('dist/client', outputDir, { recursive: true });
 }
+
+// Copy server entry point and place it exactly where routes.json expects it
+const serverIndex = path.join('dist', 'server', 'index.js');
+const serverDest = path.join(apiDir, 'server.js');
+
+if (!fs.existsSync(serverIndex)) {
+  throw new Error(`Expected server entry at ${serverIndex} but it was not found.`);
+}
+
+fs.copyFileSync(serverIndex, serverDest);
 
 // Create config.json for Vercel
 const config = {
@@ -39,9 +42,7 @@ const config = {
   ],
 };
 
-fs.writeFileSync(
-  path.join(outputDir, 'config.json'),
-  JSON.stringify(config, null, 2)
-);
+fs.writeFileSync(path.join(outputDir, 'config.json'), JSON.stringify(config, null, 2));
 
-console.log('✓ Vercel output prepared');
+console.log('✓ Vercel output prepared (fixed layout)');
+
