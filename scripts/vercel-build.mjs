@@ -55,11 +55,12 @@ const config = {
     },
     {
       // Catch-all: route all remaining non-asset paths to SSR.
-      src: '^(?!/api)(.*)$',
+      src: '.*',
       dest: '/api/server.js',
     },
   ],
 };
+
 
 fs.writeFileSync(path.join(outputDir, 'config.json'), JSON.stringify(config, null, 2));
 
