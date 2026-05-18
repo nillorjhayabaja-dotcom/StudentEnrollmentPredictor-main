@@ -1,12 +1,8 @@
 {
   "buildCommand": "npm run build",
-  "outputDirectory": "dist/client",
-  "functions": {
-    "api/index.ts": {
-      "runtime": "nodejs@18.x"
-    }
-  }
+  "outputDirectory": "dist/client"
 }
+
 
 
 
