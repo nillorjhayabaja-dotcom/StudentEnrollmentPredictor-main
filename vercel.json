@@ -4,6 +4,17 @@
       "source": "/(.*)",
       "destination": "/"
     }
-  ]
+  ],
+  "functions": {
+    "api/index.ts": {
+      "runtime": "nodejs20.x"
+    },
+    "api/tanstack-start.ts": {
+      "runtime": "nodejs20.x"
+    }
+  }
 }
+
+
+
 
