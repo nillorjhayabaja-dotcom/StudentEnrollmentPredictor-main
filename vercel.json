@@ -3,7 +3,7 @@
   "outputDirectory": "dist/client",
   "functions": {
     "api/index.ts": {
-      "runtime": "nodejs@24.x"
+      "runtime": "nodejs18.x"
     }
   }
 }
