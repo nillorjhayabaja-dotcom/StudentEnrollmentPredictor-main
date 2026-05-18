@@ -1,19 +1,25 @@
 {
   "rewrites": [
     {
+      "source": "/api/(.*)",
+      "destination": "/api/$1"
+    },
+    {
       "source": "/(.*)",
       "destination": "/"
     }
   ],
   "functions": {
     "api/index.ts": {
-      "runtime": "nodejs20.x"
+      "runtime": "nodejs20"
     },
     "api/tanstack-start.ts": {
-      "runtime": "nodejs20.x"
+      "runtime": "nodejs20"
     }
   }
 }
+
+
 
 
 
