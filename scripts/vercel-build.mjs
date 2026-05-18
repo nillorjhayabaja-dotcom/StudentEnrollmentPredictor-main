@@ -28,21 +28,41 @@ if (!fs.existsSync(serverIndex)) {
 fs.copyFileSync(serverIndex, serverDest);
 
 // Create config.json for Vercel
+// Route rules are evaluated top-to-bottom.
+//
+// Goal: keep static asset requests on the client bundle,
+// but send all app route requests (/, /login, /dashboard, etc.)
+// through the SSR entry.
 const config = {
   version: 3,
   routes: [
     {
+      // API always hits the SSR handler
       src: '^/api/(.*)$',
       dest: '/api/server.js',
     },
     {
-      src: '.*',
-      dest: '/index.html',
+      // Serve common static asset paths directly from the copied client files
+      src: '^/(assets|favicon\\.ico|robots\\.txt|manifest\\.json|.*\\.(?:js|css|map|png|jpg|jpeg|gif|svg|webp|woff2?|ttf|eot|ico))$',
+      dest: '/$1',
+    },
+    {
+      // Let the SPA index.html exist at / for direct visits.
+      // NOTE: For an SSR router app, we ultimately want the SSR handler,
+      // so we still route everything to the SSR handler below.
+      src: '^/$',
+      dest: '/api/server.js',
+    },
+    {
+      // Catch-all: route all remaining non-asset paths to SSR.
+      src: '^(?!/api)(.*)$',
+      dest: '/api/server.js',
     },
   ],
 };
 
 fs.writeFileSync(path.join(outputDir, 'config.json'), JSON.stringify(config, null, 2));
 
-console.log('✓ Vercel output prepared (fixed layout)');
+console.log('✓ Vercel output prepared (SSR catch-all)');
+
 
