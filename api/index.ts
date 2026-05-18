@@ -1,2 +1,2 @@
-// Re-export the Vercel handler directly
-export { default } from './tanstack-start';
+// Re-export the handler
+export { default } from './tanstack-start.js';
