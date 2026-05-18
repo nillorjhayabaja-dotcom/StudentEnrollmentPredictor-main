@@ -1,7 +1,8 @@
 {
-  "buildCommand": "npm run build",
-  "outputDirectory": "dist/server"
+  "buildCommand": "node scripts/vercel-build.mjs",
+  "outputDirectory": ".vercel/output"
 }
+
 
 
 
