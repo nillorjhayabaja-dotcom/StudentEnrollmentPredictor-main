@@ -25,6 +25,20 @@ function brandedErrorResponse(): Response {
   });
 }
 
+// TEMP: marker to confirm SSR handler is being invoked on Vercel.
+// If this string is visible in the response, routing is correct and the issue is inside SSR/rendering.
+function ssrInvocationMarker(request: Request): Response {
+  const url = new URL(request.url);
+  return new Response(
+    `SSR_INVOCATION_MARKER\npath=${url.pathname}\nquery=${url.searchParams.toString()}`,
+    {
+      status: 200,
+      headers: { "content-type": "text/plain; charset=utf-8" },
+    },
+  );
+}
+
+
 function isCatastrophicSsrErrorBody(body: string, responseStatus: number): boolean {
   let payload: unknown;
   try {
@@ -68,6 +82,12 @@ async function normalizeCatastrophicSsrResponse(response: Response): Promise<Res
 
 export default {
   async fetch(request: Request, env: unknown, ctx: unknown) {
+    // TEMP: marker to confirm SSR handler is being invoked on Vercel.
+    // Comment out after confirming routing.
+    if (request.headers.get("x-ssr-invocation-check") === "1") {
+      return ssrInvocationMarker(request);
+    }
+
     try {
       const handler = await getServerEntry();
       const response = await handler.fetch(request, env, ctx);
@@ -78,3 +98,4 @@ export default {
     }
   },
 };
+
