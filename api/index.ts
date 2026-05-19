@@ -1,6 +1,4 @@
-export { default } from './tanstack-start';
+import handler from './tanstack-start';
 
-// Marker export removed: runtime is configured in vercel.json
-
-
-
+// Export handler directly so Vercel can invoke it
+export default handler;
